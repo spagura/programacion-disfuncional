@@ -1,7 +1,6 @@
 module Main where
 
-import Brick
-import Dobble.Ui
+import Dobble.Ui (dobbleMain)
 
 main :: IO ()
-main = simpleMain ui
+main = dobbleMain
