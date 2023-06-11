@@ -1,9 +1,7 @@
 module Main where
 
 import Brick
-
-ui :: Widget ()
-ui = str "Hello, world!"
+import Dobble.Ui
 
 main :: IO ()
 main = simpleMain ui

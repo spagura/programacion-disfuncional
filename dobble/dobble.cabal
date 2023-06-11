@@ -27,7 +27,8 @@ synopsis: Each two cards have one symbol in common. Be the first to find it to w
 executable dobble
     main-is:          Main.hs
     -- Modules included in this executable, other than Main.
-    -- other-modules:
+    other-modules:
+        Dobble.Ui
 
     -- LANGUAGE extensions used by modules in this package.
     -- other-extensions:
