@@ -1,9 +1,11 @@
 module Dobble.Ui where
 
+import qualified System.Random as R (next, newStdGen, randomRs, mkStdGen)
 import qualified Brick.Main as BM
 import qualified Brick.Types as T
 import qualified Brick.AttrMap as A
-import qualified Graphics.Vty.Attributes as V
+import qualified Graphics.Vty as V
+import qualified Graphics.Vty.Attributes as VA
 import Brick (Widget, (<+>), str, withBorderStyle, joinBorders)
 import Brick.Widgets.Center (center)
 import Brick.Widgets.Core (padAll)
@@ -11,14 +13,37 @@ import Brick.Widgets.Border (borderWithLabel, vBorder)
 import Brick.Widgets.Border.Style (unicode)
 
 
+-- symbols = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M']
+
+-- Genera carta al azar con 4 letras desde la A hasta la M
+generateCard :: [Char]
+generateCard =  do
+    let gen = R.mkStdGen 10
+    take 4 $ R.randomRs ('A', 'M') $ gen
+    
+
+generateDeck :: [[Char]]
+generateDeck = do
+    sequence $ replicate 169 $ generateCard
+
+
+-- Chquea que dos cartas tengan 1 simbolo en comun
+symbolsInCommon :: [Char] -> [Char] -> Bool
+symbolsInCommon card1 card2 = length (filter (`elem` card2) card1) == 1
+
+-- Función que devuelve True si todas las cartas en el conjunto tienen exactamente una letra en común con todas las demás cartas
+checkDeck :: [[Char]] -> Bool
+checkDeck deck = all (\card -> all (symbolsInCommon card) (filter (/= card) deck)) deck
+
+
 data GameState = GameState {
-    cards :: [String],
+    cards :: [[Char]],
     commonSymbol :: Char
 } deriving (Show, Read, Eq, Ord)
 
 initState :: IO GameState
 initState = return $ GameState {
-    cards = ["1", "2"],
+    cards = generateDeck,
     commonSymbol = '1'
 }
 
@@ -33,12 +58,15 @@ app = BM.App {
     BM.appChooseCursor = BM.showFirstCursor,
     BM.appHandleEvent = handleEvent,
     BM.appStartEvent = BM.continueWithoutRedraw,
-    BM.appAttrMap = const $ A.forceAttrMap V.defAttr
+    BM.appAttrMap = const $ A.forceAttrMap VA.defAttr
 }
 
 handleEvent :: T.BrickEvent n e -> T.EventM n GameState ()
-handleEvent e = BM.continueWithoutRedraw
 
+-- ESC para salir
+handleEvent (T.VtyEvent e) = case e of
+    V.EvKey V.KEsc        [] -> BM.halt 
+    _                        -> BM.continueWithoutRedraw
 
 draw :: GameState -> [T.Widget n]
 draw s = return ui

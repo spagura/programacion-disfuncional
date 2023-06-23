@@ -36,6 +36,7 @@ executable dobble
     build-depends:    
         base,
         brick,
-        vty
+        vty,
+        random
     hs-source-dirs:   app
     default-language: Haskell2010
