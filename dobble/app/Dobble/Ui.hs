@@ -53,8 +53,7 @@ checkDeck deck = all (\card -> all (symbolsInCommon card) (filter (/= card) deck
 
 data GameState = GameState {
     cards :: Deck,
-    commonSymbol :: Symbol,
-    bobo :: [Char]
+    commonSymbol :: Symbol
 } deriving (Show, Read, Eq, Ord)
 
 initState :: IO GameState
@@ -62,7 +61,6 @@ initState = do
     deck <- generateDeck
     return $ GameState
         { cards = deck
-        , bobo = ['1', '2', '3', '4']
         , commonSymbol = '1'
         }
 
