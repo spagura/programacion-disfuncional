@@ -12,33 +12,36 @@ import Brick.Widgets.Core (padAll)
 import Brick.Widgets.Border (borderWithLabel, vBorder)
 import Brick.Widgets.Border.Style (unicode)
 
+type Symbol = Char
+type Card = [Symbol]
+type Deck = [Card]
 
 -- symbols = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M']
 
 -- Genera carta al azar con 4 letras desde la A hasta la M
-generateCard :: [Char]
+generateCard :: Card
 generateCard =  do
     let gen = R.mkStdGen 10
     take 4 $ R.randomRs ('A', 'M') $ gen
     
 
-generateDeck :: [[Char]]
+generateDeck :: Deck
 generateDeck = do
     sequence $ replicate 169 $ generateCard
 
 
 -- Chquea que dos cartas tengan 1 simbolo en comun
-symbolsInCommon :: [Char] -> [Char] -> Bool
+symbolsInCommon :: Card -> Card -> Bool
 symbolsInCommon card1 card2 = length (filter (`elem` card2) card1) == 1
 
 -- Función que devuelve True si todas las cartas en el conjunto tienen exactamente una letra en común con todas las demás cartas
-checkDeck :: [[Char]] -> Bool
+checkDeck :: Deck -> Bool
 checkDeck deck = all (\card -> all (symbolsInCommon card) (filter (/= card) deck)) deck
 
 
 data GameState = GameState {
-    cards :: [[Char]],
-    commonSymbol :: Char
+    cards :: Deck,
+    commonSymbol :: Symbol
 } deriving (Show, Read, Eq, Ord)
 
 initState :: IO GameState
@@ -78,4 +81,3 @@ ui =
     withBorderStyle unicode $
     borderWithLabel (str "Dobble!") $
     (center (str "Left") <+> vBorder <+> center (str "Right"))
-
