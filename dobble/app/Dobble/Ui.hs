@@ -8,9 +8,12 @@ import qualified Graphics.Vty as V
 import qualified Graphics.Vty.Attributes as VA
 import Brick (Widget, (<+>), str, withBorderStyle, joinBorders)
 import Brick.Widgets.Center (center)
-import Brick.Widgets.Core (padAll)
+import Brick.Widgets.Core (padAll, vBox)
 import Brick.Widgets.Border (borderWithLabel, vBorder)
 import Brick.Widgets.Border.Style (unicode)
+import Data.List (intercalate, genericReplicate)
+import System.Random (randomRIO)
+import Control.Monad (replicateM)
 
 type Symbol = Char
 type Card = [Symbol]
@@ -18,16 +21,25 @@ type Deck = [Card]
 
 -- symbols = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M']
 
--- Genera carta al azar con 4 letras desde la A hasta la M
-generateCard :: Card
-generateCard =  do
-    let gen = R.mkStdGen 10
-    take 4 $ R.randomRs ('A', 'M') $ gen
-    
+-- Funcion para hacerle shuffle a una lista
+shuffle :: [a] -> IO [a]
+shuffle [] = return []
+shuffle items = do
+    index <- randomRIO (0, length items - 1)
+    rest <- shuffle (take index items ++ drop (index + 1) items)
+    return (items !! index : rest)
 
-generateDeck :: Deck
-generateDeck = do
-    sequence $ replicate 169 $ generateCard
+-- Genera carta al azar con 4 emojis
+generateCard :: IO Card
+generateCard = do
+    shuffledEmojis <- shuffle emojis
+    return (take 4 shuffledEmojis)
+  where
+    emojis = ['😈', '👀', '🤡', '😍', '🥲', '🤣', '😀', '👾', '🧲', '🎃']
+
+-- Genera un deck de 169 cartas
+generateDeck :: IO Deck
+generateDeck = replicateM 169 generateCard
 
 
 -- Chquea que dos cartas tengan 1 simbolo en comun
@@ -41,14 +53,18 @@ checkDeck deck = all (\card -> all (symbolsInCommon card) (filter (/= card) deck
 
 data GameState = GameState {
     cards :: Deck,
-    commonSymbol :: Symbol
+    commonSymbol :: Symbol,
+    bobo :: [Char]
 } deriving (Show, Read, Eq, Ord)
 
 initState :: IO GameState
-initState = return $ GameState {
-    cards = generateDeck,
-    commonSymbol = '1'
-}
+initState = do
+    deck <- generateDeck
+    return $ GameState
+        { cards = deck
+        , bobo = ['1', '2', '3', '4']
+        , commonSymbol = '1'
+        }
 
 dobbleMain :: IO ()
 dobbleMain = do
@@ -72,12 +88,15 @@ handleEvent (T.VtyEvent e) = case e of
     _                        -> BM.continueWithoutRedraw
 
 draw :: GameState -> [T.Widget n]
-draw s = return ui
+draw state = return (ui state)
 
-ui :: T.Widget n
-ui = 
+ui :: GameState -> T.Widget n
+ui gameState =
     padAll 1 $
     joinBorders $
     withBorderStyle unicode $
     borderWithLabel (str "Dobble!") $
-    (center (str "Left") <+> vBorder <+> center (str "Right"))
+    vBox $ map cardWidget (cards gameState)
+    where
+        cardWidget :: String -> Widget n
+        cardWidget symbols = center (str symbols) <+> vBorder
