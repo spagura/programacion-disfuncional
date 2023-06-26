@@ -19,8 +19,6 @@ type Symbol = Char
 type Card = [Symbol]
 type Deck = [Card]
 
--- symbols = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M']
-
 -- Funcion para hacerle shuffle a una lista
 shuffle :: [a] -> IO [a]
 shuffle [] = return []
@@ -29,18 +27,23 @@ shuffle items = do
     rest <- shuffle (take index items ++ drop (index + 1) items)
     return (items !! index : rest)
 
--- Genera carta al azar con 4 emojis
-generateCard :: IO Card
-generateCard = do
+-- Recibe el nro de simbolos que tiene cada carta 
+-- Devuelve una tupla con dos cartas que tienen solamente un simbolo en comun y ese simbolo (en un IO)
+generateCardPair :: Int -> IO (Card, Card, Symbol)
+generateCardPair n = do
+    dup:others <- getNSymbols n
+    (firstHalf, secondHalf) <- return $ splitAt (n - 1) others
+    card1 <- shuffle $ dup:firstHalf
+    card2 <- shuffle $ dup:secondHalf
+    return (card1, card2, dup)
+
+getNSymbols :: Int -> IO [Symbol]
+getNSymbols n = do
     shuffledEmojis <- shuffle emojis
-    return (take 4 shuffledEmojis)
+    return (take (n * 2 - 1) shuffledEmojis)
   where
-    emojis = ['😈', '👀', '🤡', '😍', '🥲', '🤣', '😀', '👾', '🧲', '🎃']
-
--- Genera un deck de 169 cartas
-generateDeck :: IO Deck
-generateDeck = replicateM 169 generateCard
-
+    --emojis = ['😈', '👀', '🤡', '😍', '🥲', '🤣', '😀', '👾', '🧲', '🎃']
+    emojis = ['\128512'..'\128591']
 
 -- Chquea que dos cartas tengan 1 simbolo en comun
 symbolsInCommon :: Card -> Card -> Bool
@@ -52,17 +55,19 @@ checkDeck deck = all (\card -> all (symbolsInCommon card) (filter (/= card) deck
 
 
 data GameState = GameState {
-    cards :: Deck,
+    cardPlayer1 :: Card,
+    cardPlayer2 :: Card,
     commonSymbol :: Symbol
 } deriving (Show, Read, Eq, Ord)
 
 initState :: IO GameState
 initState = do
-    deck <- generateDeck
-    return $ GameState
-        { cards = deck
-        , commonSymbol = '1'
-        }
+    (card1, card2, commonSymbol) <- generateCardPair 5
+    return $ GameState {
+        cardPlayer1 = card1,
+        cardPlayer2 = card2,
+        commonSymbol = commonSymbol
+    }
 
 dobbleMain :: IO ()
 dobbleMain = do
@@ -89,12 +94,9 @@ draw :: GameState -> [T.Widget n]
 draw state = return (ui state)
 
 ui :: GameState -> T.Widget n
-ui gameState =
+ui s = 
     padAll 1 $
     joinBorders $
     withBorderStyle unicode $
     borderWithLabel (str "Dobble!") $
-    vBox $ map cardWidget (cards gameState)
-    where
-        cardWidget :: String -> Widget n
-        cardWidget symbols = center (str symbols) <+> vBorder
+    (center (str ((cardPlayer1 s) ++ "   " ++ (cardPlayer2 s))))
