@@ -14,6 +14,8 @@ import Brick.Widgets.Border.Style (unicode)
 import Data.List (intercalate, genericReplicate)
 import System.Random (randomRIO)
 import Control.Monad (replicateM)
+import Control.Monad.State
+import Control.Monad.IO.Class (liftIO)
 
 type Symbol = Char
 type Card = [Symbol]
@@ -62,12 +64,15 @@ data GameState = GameState {
 
 initState :: IO GameState
 initState = do
-    (card1, card2, commonSymbol) <- generateCardPair 5
+    (card1, card2, commonSymbol) <- generateCardPair 7
     return $ GameState {
         cardPlayer1 = card1,
         cardPlayer2 = card2,
         commonSymbol = commonSymbol
     }
+
+updateState :: GameState -> IO GameState
+updateState s = initState
 
 dobbleMain :: IO ()
 dobbleMain = do
@@ -84,18 +89,23 @@ app = BM.App {
 }
 
 handleEvent :: T.BrickEvent n e -> T.EventM n GameState ()
-
--- ESC para salir
 handleEvent (T.VtyEvent e) = case e of
+    -- ESC para salir
     V.EvKey V.KEsc        [] -> BM.halt 
+    -- Enter para siguiente turno
+    V.EvKey V.KEnter      [] -> do
+                                    s <- get
+                                    ns <- liftIO $ updateState s
+                                    put ns
     _                        -> BM.continueWithoutRedraw
+
 
 draw :: GameState -> [T.Widget n]
 draw state = return (ui state)
 
 ui :: GameState -> T.Widget n
 ui s = 
-    padAll 1 $
+    padAll 10 $
     joinBorders $
     withBorderStyle unicode $
     borderWithLabel (str "Dobble!") $
