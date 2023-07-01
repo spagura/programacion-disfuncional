@@ -8,7 +8,7 @@ import qualified Graphics.Vty as V
 import qualified Graphics.Vty.Attributes as VA
 import Brick (Widget, (<+>), str, withBorderStyle, joinBorders)
 import Brick.Widgets.Center (center)
-import Brick.Widgets.Core (padAll, vBox)
+import Brick.Widgets.Core (padAll, vBox, hBox, padRight, padLeft, padTopBottom, padLeftRight, Padding(Pad))
 import Brick.Widgets.Border (borderWithLabel, vBorder)
 import Brick.Widgets.Border.Style (unicode)
 import Data.List (intercalate, genericReplicate)
@@ -20,6 +20,8 @@ import Control.Monad.IO.Class (liftIO)
 type Symbol = Char
 type Card = [Symbol]
 type Deck = [Card]
+
+
 
 -- Funcion para hacerle shuffle a una lista
 shuffle :: [a] -> IO [a]
@@ -39,13 +41,17 @@ generateCardPair n = do
     card2 <- shuffle $ dup:secondHalf
     return (card1, card2, dup)
 
+
+-- https://unicodemap.org/
 getNSymbols :: Int -> IO [Symbol]
 getNSymbols n = do
     shuffledEmojis <- shuffle emojis
     return (take (n * 2 - 1) shuffledEmojis)
   where
     --emojis = ['😈', '👀', '🤡', '😍', '🥲', '🤣', '😀', '👾', '🧲', '🎃']
-    emojis = ['\128512'..'\128591']
+    --emojis = ['\128512'..'\128591']
+    --emojis = [toEnum 0x2660 .. toEnum 0x26FF]
+    emojis = ['A' .. 'M']
 
 -- Chquea que dos cartas tengan 1 simbolo en comun
 symbolsInCommon :: Card -> Card -> Bool
@@ -103,10 +109,36 @@ handleEvent (T.VtyEvent e) = case e of
 draw :: GameState -> [T.Widget n]
 draw state = return (ui state)
 
+internalPaddingX = 5
+internalPaddingY = 3
+distFromBorder = 10
+
 ui :: GameState -> T.Widget n
 ui s = 
-    padAll 10 $
-    joinBorders $
+    let cardWidget1 = drawCard (cardPlayer1 s) "Jugador 1"
+        cardWidget2 = drawCard (cardPlayer2 s) "Jugador 2"
+        cardsWidget = padRight (Pad distFromBorder) cardWidget1  <+> vBorder <+> padLeft (Pad distFromBorder) cardWidget2
+    in
+    padAll 2 $
     withBorderStyle unicode $
     borderWithLabel (str "Dobble!") $
-    (center (str ((cardPlayer1 s) ++ "   " ++ (cardPlayer2 s))))
+    center cardsWidget
+
+drawCard :: Card -> String -> T.Widget n
+drawCard card label=
+    let numSymbols = length card
+        numRows = ceiling (sqrt (fromIntegral numSymbols))
+        symbolsPerRow = ceiling (fromIntegral numSymbols / fromIntegral numRows)
+        symbolWidgets = map drawSymbol card
+        rows = splitIntoRows symbolsPerRow symbolWidgets
+        paddedSymbolRows = map hBox rows
+    in
+    borderWithLabel (str label) $ padTopBottom internalPaddingY $ padLeftRight internalPaddingX $ vBox paddedSymbolRows
+
+splitIntoRows :: Int -> [T.Widget n] -> [[T.Widget n]]
+splitIntoRows _ [] = []
+splitIntoRows n xs = take n xs : splitIntoRows n (drop n xs)
+
+drawSymbol :: Symbol -> T.Widget n
+drawSymbol symbol = str([symbol]) <+> str " "
+
