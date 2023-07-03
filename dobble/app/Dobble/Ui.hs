@@ -1,3 +1,4 @@
+{-# LANGUAGE InstanceSigs #-}
 module Dobble.Ui where
 
 import qualified Brick.Main as BM
@@ -14,6 +15,8 @@ import System.Random (randomRIO)
 import Control.Monad.State
 import Control.Monad.IO.Class (liftIO)
 import Data.List ((\\))
+import Data.Foldable (Foldable, foldl)
+import Control.Monad.Writer
 
 type Symbol = Char
 type Card = [Symbol]
@@ -54,6 +57,33 @@ getNSymbols n exclusions requiredSymbols = do
 symbolsInCommon :: Card -> Card -> Bool
 symbolsInCommon card1 card2 = length (filter (`elem` card2) card1) == 1
 
+data MatchResult = Match | NoMatch
+
+instance Semigroup MatchResult where
+    (<>) :: MatchResult -> MatchResult -> MatchResult
+    Match <> _ = Match
+    _ <> Match = Match
+    _ <> _ = NoMatch
+
+instance Monoid MatchResult where
+    mempty = NoMatch
+
+computeMatchResult :: Symbol -> Symbol -> MatchResult
+computeMatchResult s1 s2
+    | s1 == s2 = Match
+    | otherwise = NoMatch
+
+
+matchSymbol :: (Foldable t) => t Symbol -> Symbol -> Writer [Symbol] MatchResult
+matchSymbol symbols common = foldl (\acc x -> do
+    current <- acc
+    return $ let
+        matchResult = computeMatchResult x common
+        in current <> matchResult) (return NoMatch) symbols
+
+matchCard :: (Foldable t) => t Symbol -> [Symbol] -> [Writer [Symbol] MatchResult]
+matchCard card commonCard = map (\a -> matchSymbol card a) commonCard
+
 data GameState = GameState {
     cardPlayer1 :: Card,
     cardPlayer2 :: Card,
@@ -72,9 +102,11 @@ initState = do
         player1Points = 0,
         player2Points = 0
     }
+    
 
 updateState :: Int -> GameState -> IO GameState
 updateState winner s = do
+    -- let (viewed1, viewed2) = play (cardPlayer1 s) (cardPlayer2 s) (cardCommon s)
     (card1, card2, card3) <- generateCards 7
     freshState <- initState
     let updatedGameState = incrementPlayerPoints winner s
