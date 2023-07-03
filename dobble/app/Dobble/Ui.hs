@@ -108,14 +108,15 @@ data GameState = GameState {
 initState :: IO GameState
 initState = do
     (card1, card2, card3) <- generateCards 9
+    let (used1, used2) = play card1 card2 card3
     return $ GameState {
         cardPlayer1 = card1,
         cardPlayer2 = card2,
         cardCommon = card3,
         player1Points = 0,
         player2Points = 0,
-        usedPlayer1 = [],
-        usedPlayer2 = []
+        usedPlayer1 = used1,
+        usedPlayer2 = used2
     }
 
 findWinner :: Card -> Card -> Int
@@ -128,8 +129,8 @@ findWinner c1 c2
 
 updateState :: GameState -> IO GameState
 updateState s = do
-    let (used1, used2) = play (cardPlayer1 s) (cardPlayer2 s) (cardCommon s)
     (card1, card2, card3) <- generateCards 9
+    let (used1, used2) = play card1 card2 card3
     freshState <- initState
     let updatedGameState = incrementPlayerPoints (findWinner used1 used2) s
     return (freshState { usedPlayer1 = used1, usedPlayer2 = used2, cardPlayer1 = card1, cardPlayer2 = card2, cardCommon = card3, player1Points = player1Points updatedGameState, player2Points = player2Points updatedGameState })
