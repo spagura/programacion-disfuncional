@@ -1,16 +1,17 @@
 {-# LANGUAGE InstanceSigs #-}
 module Dobble.Ui where
 
+import Brick (Widget, (<+>), str, withBorderStyle, joinBorders)
 import qualified Brick.Main as BM
 import qualified Brick.Types as T
 import qualified Brick.AttrMap as A
-import qualified Graphics.Vty as V
-import qualified Graphics.Vty.Attributes as VA
-import Brick (Widget, (<+>), str, withBorderStyle, joinBorders)
 import Brick.Widgets.Center (center, hCenter)
-import Brick.Widgets.Core (padAll, vBox, hBox, padRight, padLeft, padTopBottom, padLeftRight, padBottom, Padding(Pad), (<=>))
+import Brick.Widgets.Core (padAll, vBox, hBox, padRight, padLeft, padTopBottom, padLeftRight, padBottom, withAttr, Padding(Pad), (<=>))
 import Brick.Widgets.Border (borderWithLabel, vBorder, hBorder)
 import Brick.Widgets.Border.Style (unicode)
+import System.IO
+import qualified Graphics.Vty as V
+import qualified Graphics.Vty.Attributes as VA
 import System.Random (randomRIO)
 import Control.Monad.State
 import Control.Monad.IO.Class (liftIO)
@@ -91,8 +92,8 @@ mapTuple f (a1, a2) = (f a1, f a2)
 
 play :: Card -> Card -> Card -> (Card, Card)
 play c1 c2 cCommon = let
-    c1' = c1 -- or other foldable implementation
-    c2' = c2 -- or other foldable implementation
+    c1' = c1 
+    c2' = c2 
     in  mapTuple (snd . runWriter)(matchCard c1' cCommon, matchCard c2' cCommon)
 
 data GameState = GameState {
@@ -146,8 +147,42 @@ app = BM.App {
     BM.appChooseCursor = BM.showFirstCursor,
     BM.appHandleEvent = handleEvent,
     BM.appStartEvent = BM.continueWithoutRedraw,
-    BM.appAttrMap = const $ A.forceAttrMap VA.defAttr
+    BM.appAttrMap = const $ aMap
 }
+
+printToTextFile :: String -> FilePath -> IO ()
+printToTextFile content filePath = do
+  writeFile filePath content
+
+aMap :: A.AttrMap
+aMap = A.attrMap V.defAttr
+    [ (A.attrName "symbolA", VA.withForeColor VA.defAttr (V.rgbColor 40 0 50))
+    , (A.attrName "symbolB", VA.withForeColor VA.defAttr (V.rgbColor 70 0 180))
+    , (A.attrName "symbolC", VA.withForeColor VA.defAttr (V.rgbColor 100 0 255))
+    , (A.attrName "symbolD", VA.withForeColor VA.defAttr (V.rgbColor 130 50 0))
+    , (A.attrName "symbolE", VA.withForeColor VA.defAttr (V.rgbColor 160 180 0))
+    , (A.attrName "symbolF", VA.withForeColor VA.defAttr (V.rgbColor 190 255 0))
+    , (A.attrName "symbolG", VA.withForeColor VA.defAttr (V.rgbColor 220 0 80))
+    , (A.attrName "symbolH", VA.withForeColor VA.defAttr (V.rgbColor 255 0 0))
+    , (A.attrName "symbolI", VA.withForeColor VA.defAttr (V.rgbColor 50 40 0))
+    , (A.attrName "symbolJ", VA.withForeColor VA.defAttr (V.rgbColor 180 70 0))
+    , (A.attrName "symbolK", VA.withForeColor VA.defAttr (V.rgbColor 255 100 0))
+    , (A.attrName "symbolL", VA.withForeColor VA.defAttr (V.rgbColor 0 130 50))
+    , (A.attrName "symbolM", VA.withForeColor VA.defAttr (V.rgbColor 0 160 180))
+    , (A.attrName "symbolN", VA.withForeColor VA.defAttr (V.rgbColor 0 190 255))
+    , (A.attrName "symbolO", VA.withForeColor VA.defAttr (V.rgbColor 80 220 0))
+    , (A.attrName "symbolP", VA.withForeColor VA.defAttr (V.rgbColor 0 255 0))
+    , (A.attrName "symbolQ", VA.withForeColor VA.defAttr (V.rgbColor 50 0 40))
+    , (A.attrName "symbolR", VA.withForeColor VA.defAttr (V.rgbColor 180 0 70))
+    , (A.attrName "symbolS", VA.withForeColor VA.defAttr (V.rgbColor 255 0 100))
+    , (A.attrName "symbolT", VA.withForeColor VA.defAttr (V.rgbColor 0 50 130))
+    , (A.attrName "symbolU", VA.withForeColor VA.defAttr (V.rgbColor 0 180 160))
+    , (A.attrName "symbolV", VA.withForeColor VA.defAttr (V.rgbColor 0 255 190))
+    , (A.attrName "symbolW", VA.withForeColor VA.defAttr (V.rgbColor 80 0 220))
+    , (A.attrName "symbolX", VA.withForeColor VA.defAttr (V.rgbColor 0 0 255))
+    , (A.attrName "symbolY", VA.withForeColor VA.defAttr (V.rgbColor 255 255 0))
+    , (A.attrName "symbolZ", VA.withForeColor VA.defAttr (V.rgbColor 0 255 255))
+    , (A.attrName "symbol", VA.withForeColor VA.defAttr V.white) ]
 
 handleEvent :: T.BrickEvent n e -> T.EventM n GameState ()
 handleEvent (T.VtyEvent e) = case e of
@@ -158,6 +193,11 @@ handleEvent (T.VtyEvent e) = case e of
                                     s <- get
                                     ns <- liftIO $ updateState s
                                     put ns
+    -- 'g' para guardar el estado actual del juego                                
+    V.EvKey (V.KChar 'g') [] -> do
+        s <- get
+        liftIO $ printToTextFile (show s) "estado.txt"
+
     _                        -> BM.continueWithoutRedraw
 
 draw :: GameState -> [T.Widget n]
@@ -191,21 +231,51 @@ drawCard card label maybePlayed =
         paddedSymbolRows = map hBox rows
         cardWidget = hCenter $ vBox paddedSymbolRows
         cardWithLabel = borderWithLabel (str label) cardWidget
-        -- cardWithPoints = maybe cardWithLabel (\points -> cardWithLabel <=> str (" (" ++ show points ++ " points)")) maybePoints
         cardWithPoints = maybe cardWithLabel (\played -> cardWithLabel <=> displayPlayed played) maybePlayed
         cardWithTopLabel = padBottom (Pad internalPaddingY) cardWithPoints
     in
     padLeftRight internalPaddingX cardWithTopLabel
 
 displayPlayed :: (Int, Card) -> T.Widget n
-displayPlayed (points, used) = vBox $ map hCenter [hBorder, str (" (" ++ show points ++ " points)"), hBorder, str used]
+displayPlayed (points, used) = vBox $ map hCenter [hBorder, str (" (" ++ show points ++ " points)"), hBorder, hBox (map drawSymbol used)]
 
 splitIntoRows :: Int -> [T.Widget n] -> [[T.Widget n]]
 splitIntoRows _ [] = []
 splitIntoRows n xs = take n xs : splitIntoRows n (drop n xs)
 
 drawSymbol :: Symbol -> T.Widget n
-drawSymbol symbol = str [symbol] <+> str " "
+drawSymbol symbol 
+    | symbol == 'A' = drawSymbol_ "symbolA" symbol
+    | symbol == 'B' = drawSymbol_ "symbolB" symbol
+    | symbol == 'C' = drawSymbol_ "symbolC" symbol
+    | symbol == 'D' = drawSymbol_ "symbolD" symbol
+    | symbol == 'E' = drawSymbol_ "symbolE" symbol
+    | symbol == 'F' = drawSymbol_ "symbolF" symbol
+    | symbol == 'G' = drawSymbol_ "symbolG" symbol
+    | symbol == 'H' = drawSymbol_ "symbolH" symbol
+    | symbol == 'I' = drawSymbol_ "symbolI" symbol
+    | symbol == 'J' = drawSymbol_ "symbolJ" symbol
+    | symbol == 'K' = drawSymbol_ "symbolK" symbol
+    | symbol == 'L' = drawSymbol_ "symbolL" symbol
+    | symbol == 'M' = drawSymbol_ "symbolM" symbol
+    | symbol == 'N' = drawSymbol_ "symbolN" symbol
+    | symbol == 'O' = drawSymbol_ "symbolO" symbol
+    | symbol == 'P' = drawSymbol_ "symbolP" symbol
+    | symbol == 'Q' = drawSymbol_ "symbolQ" symbol
+    | symbol == 'R' = drawSymbol_ "symbolR" symbol
+    | symbol == 'S' = drawSymbol_ "symbolS" symbol
+    | symbol == 'T' = drawSymbol_ "symbolT" symbol
+    | symbol == 'U' = drawSymbol_ "symbolU" symbol
+    | symbol == 'V' = drawSymbol_ "symbolV" symbol
+    | symbol == 'W' = drawSymbol_ "symbolW" symbol
+    | symbol == 'X' = drawSymbol_ "symbolX" symbol
+    | symbol == 'Y' = drawSymbol_ "symbolY" symbol
+    | symbol == 'Z' = drawSymbol_ "symbolZ" symbol
+    | otherwise = drawSymbol_ "symbol" symbol
+
+drawSymbol_ :: String -> Symbol -> T.Widget n
+drawSymbol_ a symbol =
+    withAttr (A.attrName a) $ str [symbol] <+> str " "
 
 incrementPlayerPoints :: Int -> GameState -> GameState
 incrementPlayerPoints playerNum gameState
