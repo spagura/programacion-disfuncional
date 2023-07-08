@@ -103,11 +103,15 @@ data GameState = GameState {
     player1Points :: Int,
     player2Points :: Int,
     usedPlayer1 :: Card,
-    usedPlayer2 :: Card
+    usedPlayer2 :: Card,
+    maxPoints :: Int,
+    gameFinish :: Bool
 } deriving (Show, Read, Eq, Ord)
 
 initState :: IO GameState
 initState = do
+    putStrLn "Ingrese el número máximo de puntos:"
+    maxPts <- readLn
     (card1, card2, card3) <- generateCards 9
     let (used1, used2) = play card1 card2 card3
     return $ GameState {
@@ -117,7 +121,9 @@ initState = do
         player1Points = 0,
         player2Points = 0,
         usedPlayer1 = used1,
-        usedPlayer2 = used2
+        usedPlayer2 = used2,
+        maxPoints = maxPts,
+        gameFinish = False
     }
 
 findWinner :: Card -> Card -> Int
@@ -132,9 +138,19 @@ updateState :: GameState -> IO GameState
 updateState s = do
     (card1, card2, card3) <- generateCards 9
     let (used1, used2) = play card1 card2 card3
-    freshState <- initState
     let updatedGameState = incrementPlayerPoints (findWinner used1 used2) s
-    return (freshState { usedPlayer1 = used1, usedPlayer2 = used2, cardPlayer1 = card1, cardPlayer2 = card2, cardCommon = card3, player1Points = player1Points updatedGameState, player2Points = player2Points updatedGameState })
+    let finish = if player1Points s >= maxPoints s || player2Points s >= maxPoints s then True else False
+    return (s { 
+            usedPlayer1 = used1, 
+            usedPlayer2 = used2, 
+            cardPlayer1 = card1, 
+            cardPlayer2 = card2, 
+            cardCommon = card3, 
+            player1Points = player1Points updatedGameState, 
+            player2Points = player2Points updatedGameState,
+            gameFinish = finish
+        })
+
 
 dobbleMain :: IO ()
 dobbleMain = do
@@ -200,8 +216,24 @@ handleEvent (T.VtyEvent e) = case e of
 
     _                        -> BM.continueWithoutRedraw
 
+
 draw :: GameState -> [T.Widget n]
-draw state = return (ui state)
+draw state = 
+    if gameFinish state
+    then 
+        if player1Points state >= maxPoints state 
+        then return (
+            joinBorders $
+            withBorderStyle unicode $
+            borderWithLabel (str "Dobble!") $
+            (center (str "Ganador jugador 1")))
+        else 
+            return (
+            joinBorders $
+            withBorderStyle unicode $
+            borderWithLabel (str "Dobble!") $
+            (center (str "Ganador jugador 2")))
+    else return (ui state)
 
 internalPaddingX = 5
 internalPaddingY = 3
@@ -279,6 +311,6 @@ drawSymbol_ a symbol =
 
 incrementPlayerPoints :: Int -> GameState -> GameState
 incrementPlayerPoints playerNum gameState
-    | playerNum == 1 = gameState { player1Points = player1Points gameState + 1 }
-    | playerNum == 2 = gameState { player2Points = player2Points gameState + 1 }
+    | playerNum == 1 && player1Points gameState < maxPoints gameState = gameState { player1Points = player1Points gameState + 1 }
+    | playerNum == 2 && player2Points gameState < maxPoints gameState = gameState { player2Points = player2Points gameState + 1 }
     | otherwise = gameState
