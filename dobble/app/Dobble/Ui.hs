@@ -92,8 +92,8 @@ mapTuple f (a1, a2) = (f a1, f a2)
 
 play :: Card -> Card -> Card -> (Card, Card)
 play c1 c2 cCommon = let
-    c1' = c1 
-    c2' = c2 
+    c1' = c1 -- or other foldable implementation
+    c2' = reverse c2 -- or other foldable implementation
     in  mapTuple (snd . runWriter)(matchCard c1' cCommon, matchCard c2' cCommon)
 
 data GameState = GameState {
