@@ -18,20 +18,12 @@ import Control.Monad.IO.Class (liftIO)
 import Data.List ((\\))
 import Data.Foldable (Foldable, foldl)
 import Control.Monad.Writer
-
+import Dobble.Utils
 import Dobble.Foldables
 
 type Symbol = Char
 type Card = [Symbol]
 type Deck = [Card]
-
--- Funcion para hacerle shuffle a una lista
-shuffle :: [a] -> IO [a]
-shuffle [] = return []
-shuffle items = do
-    index <- randomRIO (0, length items - 1)
-    rest <- shuffle (take index items ++ drop (index + 1) items)
-    return (items !! index : rest)
 
 -- Recibe el nro de simbolos que tiene cada carta 
 -- Devuelve una tripla con tres cartas que tienen solamente un simbolo en comun entre cualquier par que se tome (en un IO)
@@ -88,9 +80,6 @@ matchCard playerCard commonCard = foldl (\acc x -> do
             tell [x]
             return $ let matchResult = matchSymbol x commonCard
                 in current <> matchResult) (return NoMatch) playerCard
-
-mapTuple :: (a -> b) -> (a, a) -> (b, b)
-mapTuple f (a1, a2) = (f a1, f a2)
 
 play :: Card -> Card -> Card -> (Card, Card)
 play c1 c2 cCommon = let
@@ -153,7 +142,6 @@ updateState s = do
             gameFinish = finish
         })
 
-
 dobbleMain :: IO ()
 dobbleMain = do
     BM.defaultMain app =<< initState
@@ -167,10 +155,6 @@ app = BM.App {
     BM.appStartEvent = BM.continueWithoutRedraw,
     BM.appAttrMap = const $ aMap
 }
-
-printToTextFile :: String -> FilePath -> IO ()
-printToTextFile content filePath = do
-  writeFile filePath content
 
 aMap :: A.AttrMap
 aMap = A.attrMap V.defAttr
@@ -217,7 +201,6 @@ handleEvent (T.VtyEvent e) = case e of
         liftIO $ printToTextFile (show s) "estado.txt"
 
     _                        -> BM.continueWithoutRedraw
-
 
 draw :: GameState -> [T.Widget n]
 draw state = 
