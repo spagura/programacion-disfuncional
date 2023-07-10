@@ -26,15 +26,18 @@ computeMatchResult s1 s2
 matchSymbol :: Symbol -> Card -> MatchResult
 matchSymbol symbol card = foldMap (\ a -> computeMatchResult a symbol) card
 
-matchCard :: (Foldable t) => t Symbol -> Card -> Writer [Symbol] MatchResult
-matchCard playerCard commonCard = foldl (\acc x -> do
+matchWriting :: Card -> Writer [Symbol] MatchResult -> Symbol -> Writer [Symbol] MatchResult
+matchWriting commonCard acc x = do
     current <- acc
     case (current) of
         (Match) -> return Match
         (NoMatch) -> do
             tell [x]
             return $ let matchResult = matchSymbol x commonCard
-                in current <> matchResult) (return NoMatch) playerCard
+                in current <> matchResult
+
+matchCard :: (Foldable t) => t Symbol -> Card -> Writer [Symbol] MatchResult
+matchCard playerCard commonCard = foldl (matchWriting commonCard) (return NoMatch) playerCard
 
 playRound :: Card -> Card -> Card -> (Card, Card)
 playRound c1 c2 cCommon = let
