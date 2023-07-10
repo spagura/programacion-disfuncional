@@ -31,6 +31,7 @@ executable dobble
         Dobble.Ui,
         Dobble.Foldables
         Dobble.Utils
+        Dobble.Card
 
     -- LANGUAGE extensions used by modules in this package.
     -- other-extensions:
