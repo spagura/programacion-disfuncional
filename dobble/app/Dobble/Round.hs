@@ -1,7 +1,7 @@
 {-# LANGUAGE InstanceSigs #-}
 module Dobble.Round where
 
-import Data.Foldable (Foldable, foldl)
+import Data.Foldable
 import Control.Monad.Writer
 import Dobble.Utils
 import Dobble.Foldables
