@@ -23,10 +23,6 @@ import Dobble.Foldables
 import Dobble.Card
 
 
--- Chquea que dos cartas tengan 1 simbolo en comun
-symbolsInCommon :: Card -> Card -> Bool
-symbolsInCommon card1 card2 = length (filter (`elem` card2) card1) == 1
-
 data MatchResult = Match | NoMatch deriving Show
 
 instance Semigroup MatchResult where
